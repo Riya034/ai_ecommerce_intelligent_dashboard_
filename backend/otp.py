@@ -1,35 +1,44 @@
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
-
+import os
+import random
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-import random
-import os
 
-# Get environment variables from Render
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
-
+otp_store = {}
 
 def send_otp(email):
-    # Check if env variables exist
-    if not SENDGRID_API_KEY or not SENDER_EMAIL:
-        print("⚠️ Missing SendGrid configuration")
-        return None
-
-    otp = str(random.randint(100000, 999999))
-
-    message = Mail(
-        from_email=SENDER_EMAIL,
-        to_emails=email,
-        subject="Your OTP Code",
-        html_content=f"<strong>Your OTP is: {otp}</strong>",
-    )
-
     try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        sg.send(message)
-        return otp
+        otp = str(random.randint(100000, 999999))
+        otp_store[email] = otp
+
+        api_key = os.getenv("SENDGRID_API_KEY")
+        sender_email = os.getenv("SENDER_EMAIL")
+
+        if not api_key:
+            raise Exception("Missing SENDGRID_API_KEY")
+
+        if not sender_email:
+            raise Exception("Missing SENDER_EMAIL")
+
+        message = Mail(
+            from_email=sender_email,   # ✅ FIXED HERE
+            to_emails=email,
+            subject="Your OTP Code",
+            html_content=f"<strong>Your OTP is {otp}</strong>"
+        )
+
+        sg = SendGridAPIClient(api_key)
+        response = sg.send(message)
+
+        print("SENDGRID STATUS:", response.status_code)
+        print("OTP:", otp)
+
+        return True
+
     except Exception as e:
-        print("Email error:", e)
-        return None
+        print("OTP ERROR:", str(e))
+        return False
+
+
+def verify_otp(email, otp):
+    return otp_store.get(email) == otp
+   
