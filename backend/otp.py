@@ -37,8 +37,7 @@ def send_otp(email):
     except Exception as e:
         print("OTP ERROR:", str(e))
         return False
-
-
 def verify_otp(email, otp):
+    return otp_store.get(email) == otp
     return otp_store.get(email) == otp
    
