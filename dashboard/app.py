@@ -13,7 +13,7 @@ def call_api(method, path, params=None, retries=3, timeout=30):
 
     for attempt in range(retries):
         try:
-            with st.spinner("Connecting to server..."):
+            
                 if method == "GET":
                     res = requests.get(url, params=params, timeout=timeout)
                 else:
@@ -113,7 +113,10 @@ body {
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="hero">🚀 AI Commerce Intelligence</div>', unsafe_allow_html=True)
-status = call_api("GET", "/", {})
+try:
+    status = requests.get(f"{API_URL}/", timeout=5).json()
+except:
+    status = {}
 if "status" in status:
     st.success("🟢 Backend Live")
 else:
