@@ -40,13 +40,21 @@ if st.sidebar.button("Register", key="register_btn"):
     st.sidebar.success(res.json().get("message", res.json().get("error")))
 
 # LOGIN
+import time
+
 if st.sidebar.button("Login", key="login_btn"):
     try:
-        res = requests.post(
-            f"{API_URL}/login",
-            params={"email": email, "password": password},
-            timeout=10
-        )
+        with st.spinner("Connecting to server..."):
+            for _ in range(2):  # retry 2 times
+                try:
+                    res = requests.post(
+                        f"{API_URL}/login",
+                        params={"email": email, "password": password},
+                        timeout=30   # 🔥 increased timeout
+                    )
+                    break
+                except:
+                    time.sleep(2)
 
         data = res.json() if res.text else {}
 
@@ -57,14 +65,7 @@ if st.sidebar.button("Login", key="login_btn"):
             st.sidebar.error(data.get("error", "Login failed"))
 
     except Exception:
-        st.sidebar.error("⚠️ Backend not responding. Try again.")
-
-
-
-   
-
-if not st.session_state.logged_in:
-    st.stop()
+        st.sidebar.error("⚠️ Backend is waking up... try again in few seconds")
 
 
 # ===== PREMIUM UI STYLES =====
