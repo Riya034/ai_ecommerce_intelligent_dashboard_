@@ -1,8 +1,9 @@
-streamlit
+fastapi
+uvicorn
 pandas
-numpy
-plotly
-scikit-learn
 joblib
-streamlit-autorefresh
+sendgrid
+python-dotenv
 requests
+streamlit
+passlib[bcrypt]
