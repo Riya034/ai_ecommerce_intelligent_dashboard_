@@ -112,10 +112,15 @@ body {
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="hero">🚀 AI Commerce Intelligence</div>', unsafe_allow_html=True)
-try:
-    status = requests.get(f"{API_URL}/", timeout=5).json()
-except:
-    status = {}
+status = call_api("GET", "/", {})
+
+if "status" in status:
+    st.success("🟢 Backend Live")
+elif "error" in status:
+    st.warning("🟡 Backend waking up...")
+else:
+    st.warning("⚠️ Cannot connect to backend")
+
 if "status" in status:
     st.success("🟢 Backend Live")
 else:
