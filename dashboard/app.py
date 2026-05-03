@@ -7,8 +7,7 @@ import time
 import random
 import requests
 
-
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://ecommerce-backend-3731.onrender.com"
 
 st.set_page_config(page_title="AI Commerce Intelligence", layout="wide")
 if "logged_in" not in st.session_state:
@@ -53,13 +52,12 @@ if st.sidebar.button("Login", key="login_btn"):
     else:
         st.sidebar.error("Invalid credentials")
 
-if st.sidebar.button("Register"):
-    add_user(email, password)
-    st.success("User created")
+
+   
 
 if not st.session_state.logged_in:
     st.stop()
-API_URL = "http://127.0.0.1:8000"
+
 
 # ===== PREMIUM UI STYLES =====
 st.markdown("""
