@@ -1,7 +1,4 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 from passlib.hash import bcrypt
 from backend.db import add_user, get_user
 from backend.otp import send_otp
