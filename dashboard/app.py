@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
 import plotly.express as px
 import time
 import random
@@ -9,82 +8,64 @@ import requests
 
 API_URL = "https://ecommerce-backend-3731.onrender.com"
 
+def call_api(method, path, params=None, retries=3, timeout=30):
+    url = f"{API_URL}{path}"
+
+    for attempt in range(retries):
+        try:
+            with st.spinner("Connecting to server..."):
+                if method == "GET":
+                    res = requests.get(url, params=params, timeout=timeout)
+                else:
+                    res = requests.post(url, params=params, timeout=timeout)
+
+            try:
+                data = res.json() if res.text else {}
+            except:
+                data = {}
+
+            if res.status_code == 200:
+                return data
+            else:
+                return {"error": data.get("error", "API error")}
+
+        except:
+            if attempt < retries - 1:
+                time.sleep(3)
+            else:
+                return {"error": "Server waking up... try again"}
+
 st.set_page_config(page_title="AI Commerce Intelligence", layout="wide")
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 st.sidebar.title("🔐 Authentication")
 
 # ================= AUTH =================
+# ================= AUTH =================
 email = st.sidebar.text_input("Email")
 password = st.sidebar.text_input("Password", type="password")
 otp = st.sidebar.text_input("Enter OTP")
 
-# SEND OTP
-if st.sidebar.button("Send OTP", key="send_otp_btn"):
-    try:
-        res = requests.post(
-            f"{API_URL}/send-otp",
-            params={"email": email},
-            timeout=30
-        )
-        data = res.json() if res.text else {}
-        st.sidebar.success(data.get("message", data.get("error", "Done")))
-    except:
-        st.sidebar.error("⚠️ Server not responding")
+if st.sidebar.button("Send OTP"):
+    data = call_api("POST", "/send-otp", {"email": email})
+    st.sidebar.success(data.get("message", data.get("error")))
 
-# VERIFY OTP
-if st.sidebar.button("Verify OTP", key="verify_otp_btn"):
-    try:
-        res = requests.post(
-            f"{API_URL}/verify-otp",
-            params={"email": email, "otp": otp},
-            timeout=30
-        )
-        data = res.json() if res.text else {}
-        st.sidebar.success(data.get("message", data.get("error", "Done")))
-    except:
-        st.sidebar.error("⚠️ Server not responding")
+if st.sidebar.button("Verify OTP"):
+    data = call_api("POST", "/verify-otp", {"email": email, "otp": otp})
+    st.sidebar.success(data.get("message", data.get("error")))
 
-# REGISTER
-if st.sidebar.button("Register", key="register_btn"):
-    try:
-        res = requests.post(
-            f"{API_URL}/register",
-            params={"email": email, "password": password},
-            timeout=30
-        )
-        data = res.json() if res.text else {}
-        st.sidebar.success(data.get("message", data.get("error", "Done")))
-    except:
-        st.sidebar.error("⚠️ Server not responding")
+if st.sidebar.button("Register"):
+    data = call_api("POST", "/register", {"email": email, "password": password})
+    st.sidebar.success(data.get("message", data.get("error")))
 
-# LOGIN
-if st.sidebar.button("Login", key="login_btn"):
-    try:
-        with st.spinner("Connecting to server..."):
-            for _ in range(2):
-                try:
-                    res = requests.post(
-                        f"{API_URL}/login",
-                        params={"email": email, "password": password},
-                        timeout=30
-                    )
-                    break
-                except:
-                    time.sleep(2)
+if st.sidebar.button("Login"):
+    data = call_api("POST", "/login", {"email": email, "password": password})
 
-        data = res.json() if res.text else {}
-
-        if "message" in data:
-            st.session_state.logged_in = True
-            st.sidebar.success("Login successful")
-        else:
-            st.sidebar.error(data.get("error", "Login failed"))
-
-    except:
-        st.sidebar.error("⚠️ Backend waking up, try again")
-if not st.session_state.logged_in:
-    st.stop()
+    if "message" in data:
+        st.session_state.logged_in = True
+        st.sidebar.success("Login successful")
+    else:
+        st.sidebar.error(data.get("error", "Login failed"))
 
 # ===== PREMIUM UI STYLES =====
 st.markdown("""
@@ -119,6 +100,12 @@ body {
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="hero">🚀 AI Commerce Intelligence</div>', unsafe_allow_html=True)
+status = call_api("GET", "/", {})
+
+if "status" in status:
+    st.success("🟢 Backend Live")
+else:
+    st.warning("🟡 Backend waking up...")
 st.markdown('<div class="subhero">AI-powered analytics • forecasting • decision system</div>', unsafe_allow_html=True)
 # ---------------- CSS ----------------
 st.markdown("""
@@ -157,12 +144,6 @@ def load_data():
     return df
 
 df = load_data()
-
-@st.cache_resource
-def load_model():
-    return joblib.load("model.pkl")
-
-model = load_model()
 
 # ---------------- LOADING EFFECT ----------------
 placeholder = st.empty()
@@ -349,23 +330,19 @@ with tab2:
 
     with col2:
         quantity = st.slider("Quantity", 1, 10, 1)
-
     if st.button("Predict Revenue"):
-        try:
-            res = requests.get(
-                f"{API_URL}/predict",
-                params={"price": price, "quantity": quantity}
-            )
+        data = call_api("GET", "/predict", {
+            "price": price,
+            "quantity": quantity
+        })
 
-            data = res.json() if res.text else {}
+        if "revenue" in data:
+            st.success(f"💰 Predicted Revenue: ₹ {data['revenue']:.2f}")
+        else:
+            st.error(data.get("error", "Prediction failed"))
 
-            if "revenue" in data:
-                st.success(f"💰 Predicted Revenue: ₹ {data['revenue']:.2f}")
-            else:
-                st.error("API error")
 
-        except Exception:
-            st.error("❌ Backend not running.")
+       
 
     # ===== NEW FEATURE (CSV upload) =====
     st.markdown("---")
@@ -388,27 +365,25 @@ with tab2:
 
                 predicted_revenue = []
                 actual_revenue = []
-
                 with st.spinner("Processing..."):
                     for _, row in df_upload.iterrows():
                         try:
-                            res = requests.get(
-                                f"{API_URL}/predict",
-                                params={
+                            data = call_api(
+                                "GET",
+                                "/predict",
+                                {
                                     "price": float(row["price"]),
                                     "quantity": int(row["quantity"])
-                                },
-                                timeout=20
+                                }
                             )
 
-                            data = res.json() if res.text else {}
-
-                            predicted_revenue.append(data.get("revenue", 0))
-                            actual_revenue.append(row["price"] * row["quantity"])
-
                         except:
-                            predicted_revenue.append(0)
-                            actual_revenue.append(0)
+                            data = {}
+
+                        predicted_revenue.append(data.get("revenue", 0))
+                        actual_revenue.append(row["price"] * row["quantity"])
+        
+                
 
                 df_upload["Predicted Revenue"] = predicted_revenue
                 df_upload["Actual Revenue"] = actual_revenue
@@ -466,7 +441,10 @@ with tab4:
     price_range = st.slider("Price Range", 10, 1000, (50, 500))
 
     prices = np.arange(price_range[0], price_range[1], 20)
-    preds = model.predict([[p, 2, p] for p in prices])
+    preds = []
+    for p in prices:
+        data = call_api("GET", "/predict", {"price": p, "quantity": 2})
+        preds.append(data.get("revenue", 0))
 
     sim_df = pd.DataFrame({
         "Price": prices,
@@ -524,7 +502,11 @@ with tab6:
         base_price = st.slider("Base Price", 10, 1000, 100)
 
         test_prices = np.arange(base_price * 0.5, base_price * 1.5, 10)
-        preds = model.predict([[p, 2, p] for p in test_prices])
+        preds = []
+        for p in test_prices:
+            data = call_api("GET", "/predict", {"price": p, "quantity": 2})
+            preds.append(data.get("revenue", 0))
+        
 
         opt_df = pd.DataFrame({
             "Price": test_prices,
@@ -590,7 +572,11 @@ with tab8:
     st.markdown("### 💰 Price Optimization")
 
     prices = np.linspace(10, 1000, 50)
-    preds = model.predict([[p, 2, p] for p in prices])
+    preds = []
+    for p in prices:
+        data = call_api("GET", "/predict", {"price": p, "quantity": 2})
+        preds.append(data.get("revenue", 0))
+   
 
     df_opt = pd.DataFrame({"Price": prices, "Revenue": preds})
 
@@ -671,16 +657,17 @@ with tab8:
     price_a = 100
     price_b = 120
 
-    rev_a = model.predict([[price_a, 2, price_a]])
-    rev_b = model.predict([[price_b, 2, price_b]])
-
-    st.write(f"Variant A Revenue: ₹ {rev_a[0]:.2f}")
-    st.write(f"Variant B Revenue: ₹ {rev_b[0]:.2f}")
-
-    if rev_a[0] > rev_b[0]:
+    rev_a = call_api("GET", "/predict", {"price": price_a, "quantity": 2}).get("revenue", 0)
+    rev_b = call_api("GET", "/predict", {"price": price_b, "quantity": 2}).get("revenue", 0)
+   
+    st.write(f"Variant A Revenue: ₹ {rev_a:.2f}")
+    st.write(f"Variant B Revenue: ₹ {rev_b:.2f}")
+    
+    if rev_a > rev_b:
         st.success("✅ Variant A performs better")
     else:
         st.success("✅ Variant B performs better")
+    
     # ---------- SYSTEM INFO ----------
     st.markdown("### ⚙️ System Info")
 
