@@ -3,7 +3,5 @@ uvicorn
 pandas
 joblib
 sendgrid
-python-dotenv
 requests
-streamlit
 passlib[bcrypt]
