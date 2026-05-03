@@ -6,3 +6,6 @@ plotly
 requests
 scikit-learn
 passlib[bcrypt]
+fastapi
+uvicorn
+joblib
