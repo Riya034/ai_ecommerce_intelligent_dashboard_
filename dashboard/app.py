@@ -21,13 +21,14 @@ def call_api(method, path, params=None, retries=3, timeout=30):
 
             try:
                 data = res.json() if res.text else {}
+                print("API RESPONSE:", data)
             except:
                 data = {}
-
-            if res.status_code == 200:
+            if res.status_code == 200 and data:
                 return data
             else:
-                return {"error": data.get("error", "API error")}
+                return {"error": data.get("error", f"API failed ({res.status_code})")}
+           
 
         except:
             if attempt < retries - 1:
@@ -48,15 +49,27 @@ otp = st.sidebar.text_input("Enter OTP")
 
 if st.sidebar.button("Send OTP"):
     data = call_api("POST", "/send-otp", {"email": email})
-    st.sidebar.success(data.get("message", data.get("error")))
+    if "message" in data:
+        st.sidebar.success(data["message"])
+    else:
+        st.sidebar.error(data.get("error", "Something went wrong"))
+   
 
 if st.sidebar.button("Verify OTP"):
     data = call_api("POST", "/verify-otp", {"email": email, "otp": otp})
-    st.sidebar.success(data.get("message", data.get("error")))
+    if "message" in data:
+        st.sidebar.success(data["message"])
+    else:
+        st.sidebar.error(data.get("error", "Something went wrong"))
+   
 
 if st.sidebar.button("Register"):
     data = call_api("POST", "/register", {"email": email, "password": password})
-    st.sidebar.success(data.get("message", data.get("error")))
+    if "message" in data:
+        st.sidebar.success(data["message"])
+    else:
+        st.sidebar.error(data.get("error", "Something went wrong"))
+   
 
 if st.sidebar.button("Login"):
     data = call_api("POST", "/login", {"email": email, "password": password})
@@ -101,11 +114,10 @@ body {
 
 st.markdown('<div class="hero">🚀 AI Commerce Intelligence</div>', unsafe_allow_html=True)
 status = call_api("GET", "/", {})
-
 if "status" in status:
     st.success("🟢 Backend Live")
 else:
-    st.warning("🟡 Backend waking up...")
+    st.warning(status.get("error", "🟡 Backend waking up..."))
 st.markdown('<div class="subhero">AI-powered analytics • forecasting • decision system</div>', unsafe_allow_html=True)
 # ---------------- CSS ----------------
 st.markdown("""
