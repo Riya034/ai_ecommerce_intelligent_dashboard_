@@ -12,7 +12,7 @@ def call_api(method, path, params=None, retries=3, timeout=30):
     url = f"{API_URL}{path}"
 
     for attempt in range(retries):
-        try:
+            try:
             
                 if method == "GET":
                     res = requests.get(url, params=params, timeout=timeout)
