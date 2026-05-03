@@ -1,8 +1,7 @@
-fastapi
-uvicorn
+
+streamlit
 pandas
-joblib
-sendgrid
+numpy
+plotly
 requests
-passlib[bcrypt]
 scikit-learn
