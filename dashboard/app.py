@@ -7,34 +7,33 @@ import random
 import requests
 
 API_URL = "https://ecommerce-backend-3731.onrender.com"
-
 def call_api(method, path, params=None, retries=3, timeout=30):
     url = f"{API_URL}{path}"
 
     for attempt in range(retries):
         try:
-            
-                if method == "GET":
-                    res = requests.get(url, params=params, timeout=timeout)
-                else:
-                    res = requests.post(url, params=params, timeout=timeout)
+            if method == "GET":
+                res = requests.get(url, params=params, timeout=timeout)
+            else:
+                res = requests.post(url, params=params, timeout=timeout)
 
             try:
                 data = res.json() if res.text else {}
                 print("API RESPONSE:", data)
             except:
                 data = {}
+
             if res.status_code == 200 and data:
                 return data
             else:
                 return {"error": data.get("error", f"API failed ({res.status_code})")}
-           
 
         except:
             if attempt < retries - 1:
                 time.sleep(3)
             else:
                 return {"error": "Server waking up... try again"}
+
 
 st.set_page_config(page_title="AI Commerce Intelligence", layout="wide")
 if "logged_in" not in st.session_state:
