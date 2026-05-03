@@ -1,22 +1,20 @@
 import os
-from passlib.hash import bcrypt
-from backend.db import add_user, get_user
-from backend.otp import send_otp
 from fastapi import FastAPI
 import pandas as pd
 import joblib
+import re
 
 from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # prod me specific domain rakhna
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-otp_store = {}
 
 # Load model
 model = joblib.load("model.pkl")
@@ -46,72 +44,24 @@ def summary():
         "revenue": float(df["total"].sum()),
         "orders": int(len(df))
     }
-import time
-import re
+
+# ---------------- AUTH (DEMO MODE) ----------------
 
 def is_valid_email(email: str):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+
 @app.post("/send-otp")
 def send(email: str):
     if not is_valid_email(email):
         return {"error": "Invalid email format"}
 
-    # 🚫 Prevent OTP spam (30 sec cooldown)
-    if email in otp_store:
-        last_time = otp_store[email]["time"]
-        if time.time() - last_time < 30:
-            return {"error": "Wait before requesting OTP again"}
-
-    otp = send_otp(email)
-
-    otp_store[email] = {
-        "otp": otp,
-        "time": time.time(),
-        "status": "SENT"
-    }
-
-    return {"message": "OTP sent"}
+    return {"message": "OTP sent (demo mode)"}
 
 
-@app.post("/verify-otp")
-def verify(email: str, otp: str):
-    data = otp_store.get(email)
+@app.post("/login-otp")
+def login_with_otp(email: str, otp: str):
+    if not is_valid_email(email):
+        return {"error": "Invalid email"}
+    return {"message": "Login successful"}
 
-    if not data:
-        return {"error": "OTP not requested"}
-
-    # expire after 120 seconds
-    if time.time() - data["time"] > 120:
-        otp_store.pop(email, None)
-        return {"error": "OTP expired"}
-
-    if data["otp"] == otp:
-        otp_store[email]["status"] = "VERIFIED"
-        return {"message": "Verified"}
-
-    return {"error": "Invalid OTP"}
-@app.post("/register")
-def register(email: str, password: str):
-    if get_user(email):
-        return {"error": "User already exists"}
-
-    if otp_store.get(email, {}).get("status") != "VERIFIED":
-        return {"error": "OTP not verified"}
-
-    hashed_password = bcrypt.hash(password)
-    add_user(email, hashed_password)
-
-    otp_store.pop(email, None)
-
-    return {"message": "User registered"}
-
-
-@app.post("/login")
-def login(email: str, password: str):
-    user = get_user(email)
-
-    if user and bcrypt.verify(password, user[1]):
-        return {"message": "Login successful"}
-
-    return {"error": "Invalid credentials"}
 
