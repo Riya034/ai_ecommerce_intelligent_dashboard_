@@ -7,6 +7,8 @@ otp_store = {}
 
 def send_otp(email):
     try:
+        email = email.strip().lower()   # ✅ normalize
+
         otp = str(random.randint(100000, 999999))
         otp_store[email] = otp
 
@@ -20,7 +22,7 @@ def send_otp(email):
             raise Exception("Missing SENDER_EMAIL")
 
         message = Mail(
-            from_email=sender_email,   # ✅ FIXED HERE
+            from_email=sender_email,
             to_emails=email,
             subject="Your OTP Code",
             html_content=f"<strong>Your OTP is {otp}</strong>"
@@ -30,14 +32,26 @@ def send_otp(email):
         response = sg.send(message)
 
         print("SENDGRID STATUS:", response.status_code)
-        print("OTP:", otp)
+        print(f"Stored OTP for {email}: {otp}")   # ✅ debug
 
         return True
 
     except Exception as e:
         print("OTP ERROR:", str(e))
         return False
+
+
 def verify_otp(email, otp):
-    return otp_store.get(email) == otp
-    return otp_store.get(email) == otp
-   
+    email = email.strip().lower()   # ✅ normalize
+
+    stored = otp_store.get(email)
+
+    print(f"Verifying OTP for {email}")
+    print(f"Entered OTP: {otp}")
+    print(f"Stored OTP: {stored}")
+
+    if not stored:
+        print("No OTP found (maybe server restarted)")
+        return False
+
+    return str(stored) == str(otp)
