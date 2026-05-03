@@ -5,3 +5,4 @@ joblib
 sendgrid
 requests
 passlib[bcrypt]
+scikit-learn
