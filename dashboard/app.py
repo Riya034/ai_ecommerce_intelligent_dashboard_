@@ -320,65 +320,9 @@ with tab1:
 # ================= PREDICTION =================
 with tab2:
     st.subheader("🤖 AI Prediction")
-    st.markdown("### 📂 Upload CSV for Bulk Prediction")
 
-uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
-
-if uploaded_file is not None:
-    df_upload = pd.read_csv(uploaded_file)
-
-    st.write("📄 Uploaded Data Preview")
-    st.dataframe(df_upload.head())
-
-    # Check required columns
-    if "price" in df_upload.columns and "quantity" in df_upload.columns:
-
-        predicted_revenue = []
-        actual_revenue = []
-
-        with st.spinner("Processing predictions..."):
-            for _, row in df_upload.iterrows():
-                try:
-                    res = requests.get(
-                        f"{API_URL}/predict",
-                        params={
-                            "price": float(row["price"]),
-                            "quantity": int(row["quantity"])
-                        },
-                        timeout=20
-                    )
-
-                    data = res.json() if res.text else {}
-
-                    predicted_revenue.append(data.get("revenue", 0))
-                    actual_revenue.append(row["price"] * row["quantity"])
-
-                except:
-                    predicted_revenue.append(0)
-                    actual_revenue.append(0)
-
-        df_upload["Predicted Revenue"] = predicted_revenue
-        df_upload["Actual Revenue"] = actual_revenue
-
-        st.success("✅ Prediction completed")
-
-        # KPIs
-        col1, col2 = st.columns(2)
-        col1.metric("Total Predicted Revenue", f"₹ {sum(predicted_revenue):,.2f}")
-        col2.metric("Total Actual Revenue", f"₹ {sum(actual_revenue):,.2f}")
-
-        # Show table
-        st.dataframe(df_upload)
-
-        # Download option
-        st.download_button(
-            "📥 Download Results",
-            df_upload.to_csv(index=False),
-            file_name="predicted_output.csv"
-        )
-
-    else:
-        st.error("❌ CSV must contain 'price' and 'quantity' columns")
+    # ===== EXISTING FEATURE (manual prediction) =====
+    st.markdown("### 🔢 Manual Prediction")
 
     col1, col2 = st.columns(2)
 
@@ -388,8 +332,6 @@ if uploaded_file is not None:
     with col2:
         quantity = st.slider("Quantity", 1, 10, 1)
 
-    avg_price = price
-
     if st.button("Predict Revenue"):
         try:
             res = requests.get(
@@ -397,15 +339,81 @@ if uploaded_file is not None:
                 params={"price": price, "quantity": quantity}
             )
 
-            if res.status_code == 200:
-                prediction = res.json()["revenue"]
-                st.success(f"💰 Predicted Revenue: ₹ {prediction:.2f}")
+            data = res.json() if res.text else {}
+
+            if "revenue" in data:
+                st.success(f"💰 Predicted Revenue: ₹ {data['revenue']:.2f}")
             else:
                 st.error("API error")
 
         except Exception:
             st.error("❌ Backend not running.")
 
+    # ===== NEW FEATURE (CSV upload) =====
+    st.markdown("---")
+    st.markdown("### 📂 Bulk Prediction via CSV Upload")
+
+    uploaded_file = st.file_uploader(
+        "Upload CSV (price, quantity)",
+        type=["csv"],
+        key="csv_upload"
+    )
+
+    if uploaded_file is not None:
+        try:
+            df_upload = pd.read_csv(uploaded_file)
+
+            st.write("📄 Preview:")
+            st.dataframe(df_upload.head())
+
+            if "price" in df_upload.columns and "quantity" in df_upload.columns:
+
+                predicted_revenue = []
+                actual_revenue = []
+
+                with st.spinner("Processing..."):
+                    for _, row in df_upload.iterrows():
+                        try:
+                            res = requests.get(
+                                f"{API_URL}/predict",
+                                params={
+                                    "price": float(row["price"]),
+                                    "quantity": int(row["quantity"])
+                                },
+                                timeout=20
+                            )
+
+                            data = res.json() if res.text else {}
+
+                            predicted_revenue.append(data.get("revenue", 0))
+                            actual_revenue.append(row["price"] * row["quantity"])
+
+                        except:
+                            predicted_revenue.append(0)
+                            actual_revenue.append(0)
+
+                df_upload["Predicted Revenue"] = predicted_revenue
+                df_upload["Actual Revenue"] = actual_revenue
+
+                st.success("✅ Bulk prediction done")
+
+                col1, col2 = st.columns(2)
+                col1.metric("Total Predicted", f"₹ {sum(predicted_revenue):,.2f}")
+                col2.metric("Total Actual", f"₹ {sum(actual_revenue):,.2f}")
+
+                st.dataframe(df_upload)
+
+                st.download_button(
+                    "📥 Download Results",
+                    df_upload.to_csv(index=False),
+                    file_name="bulk_predictions.csv"
+                )
+
+            else:
+                st.error("❌ CSV must contain 'price' and 'quantity' columns")
+
+        except Exception:
+            st.error("❌ Error reading CSV file")
 
 # ================= INSIGHTS =================
 with tab3:
