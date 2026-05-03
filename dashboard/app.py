@@ -320,6 +320,65 @@ with tab1:
 # ================= PREDICTION =================
 with tab2:
     st.subheader("🤖 AI Prediction")
+    st.markdown("### 📂 Upload CSV for Bulk Prediction")
+
+uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+
+if uploaded_file is not None:
+    df_upload = pd.read_csv(uploaded_file)
+
+    st.write("📄 Uploaded Data Preview")
+    st.dataframe(df_upload.head())
+
+    # Check required columns
+    if "price" in df_upload.columns and "quantity" in df_upload.columns:
+
+        predicted_revenue = []
+        actual_revenue = []
+
+        with st.spinner("Processing predictions..."):
+            for _, row in df_upload.iterrows():
+                try:
+                    res = requests.get(
+                        f"{API_URL}/predict",
+                        params={
+                            "price": float(row["price"]),
+                            "quantity": int(row["quantity"])
+                        },
+                        timeout=20
+                    )
+
+                    data = res.json() if res.text else {}
+
+                    predicted_revenue.append(data.get("revenue", 0))
+                    actual_revenue.append(row["price"] * row["quantity"])
+
+                except:
+                    predicted_revenue.append(0)
+                    actual_revenue.append(0)
+
+        df_upload["Predicted Revenue"] = predicted_revenue
+        df_upload["Actual Revenue"] = actual_revenue
+
+        st.success("✅ Prediction completed")
+
+        # KPIs
+        col1, col2 = st.columns(2)
+        col1.metric("Total Predicted Revenue", f"₹ {sum(predicted_revenue):,.2f}")
+        col2.metric("Total Actual Revenue", f"₹ {sum(actual_revenue):,.2f}")
+
+        # Show table
+        st.dataframe(df_upload)
+
+        # Download option
+        st.download_button(
+            "📥 Download Results",
+            df_upload.to_csv(index=False),
+            file_name="predicted_output.csv"
+        )
+
+    else:
+        st.error("❌ CSV must contain 'price' and 'quantity' columns")
 
     col1, col2 = st.columns(2)
 
