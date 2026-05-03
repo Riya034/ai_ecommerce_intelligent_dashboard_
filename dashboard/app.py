@@ -41,16 +41,24 @@ if st.sidebar.button("Register", key="register_btn"):
 
 # LOGIN
 if st.sidebar.button("Login", key="login_btn"):
-    res = requests.post(
-        f"{API_URL}/login",
-        params={"email": email, "password": password}
-    )
+    try:
+        res = requests.post(
+            f"{API_URL}/login",
+            params={"email": email, "password": password},
+            timeout=10
+        )
 
-    if "message" in res.json():
-        st.session_state.logged_in = True
-        st.sidebar.success("Login successful")
-    else:
-        st.sidebar.error("Invalid credentials")
+        data = res.json() if res.text else {}
+
+        if "message" in data:
+            st.session_state.logged_in = True
+            st.sidebar.success("Login successful")
+        else:
+            st.sidebar.error(data.get("error", "Login failed"))
+
+    except Exception:
+        st.sidebar.error("⚠️ Backend not responding. Try again.")
+
 
 
    
