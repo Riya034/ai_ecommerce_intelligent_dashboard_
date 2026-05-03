@@ -1,25 +1,26 @@
 import os
 import random
+from datetime import datetime, timedelta
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-otp_store = {}
+from backend.db import save_otp, get_otp, delete_otp
+
+OTP_EXPIRY = 5  # minutes
+
 
 def send_otp(email):
     try:
-        email = email.strip().lower()   # ✅ normalize
-
+        email = email.lower().strip()
         otp = str(random.randint(100000, 999999))
-        otp_store[email] = otp
+
+        expires_at = (datetime.utcnow() + timedelta(minutes=OTP_EXPIRY)).isoformat()
+
+        # ✅ Save in DB
+        save_otp(email, otp, expires_at)
 
         api_key = os.getenv("SENDGRID_API_KEY")
         sender_email = os.getenv("SENDER_EMAIL")
-
-        if not api_key:
-            raise Exception("Missing SENDGRID_API_KEY")
-
-        if not sender_email:
-            raise Exception("Missing SENDER_EMAIL")
 
         message = Mail(
             from_email=sender_email,
@@ -29,10 +30,9 @@ def send_otp(email):
         )
 
         sg = SendGridAPIClient(api_key)
-        response = sg.send(message)
+        sg.send(message)
 
-        print("SENDGRID STATUS:", response.status_code)
-        print(f"Stored OTP for {email}: {otp}")   # ✅ debug
+        print("OTP SENT:", otp)
 
         return True
 
@@ -42,16 +42,24 @@ def send_otp(email):
 
 
 def verify_otp(email, otp):
-    email = email.strip().lower()   # ✅ normalize
+    email = email.lower().strip()
 
-    stored = otp_store.get(email)
+    record = get_otp(email)
 
-    print(f"Verifying OTP for {email}")
-    print(f"Entered OTP: {otp}")
-    print(f"Stored OTP: {stored}")
-
-    if not stored:
-        print("No OTP found (maybe server restarted)")
+    if not record:
         return False
 
-    return str(stored) == str(otp)
+    stored_otp, expires_at = record
+
+    # convert string → datetime
+    expires_at = datetime.fromisoformat(expires_at)
+
+    if datetime.utcnow() > expires_at:
+        delete_otp(email)
+        return False
+
+    if stored_otp == otp:
+        delete_otp(email)  # ✅ one-time use
+        return True
+
+    return False
