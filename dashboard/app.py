@@ -14,43 +14,60 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 st.sidebar.title("🔐 Authentication")
 
+# ================= AUTH =================
 email = st.sidebar.text_input("Email")
 password = st.sidebar.text_input("Password", type="password")
 otp = st.sidebar.text_input("Enter OTP")
 
 # SEND OTP
 if st.sidebar.button("Send OTP", key="send_otp_btn"):
-    res = requests.post(f"{API_URL}/send-otp", params={"email": email})
-    st.sidebar.success(res.json().get("message", res.json().get("error")))
+    try:
+        res = requests.post(
+            f"{API_URL}/send-otp",
+            params={"email": email},
+            timeout=30
+        )
+        data = res.json() if res.text else {}
+        st.sidebar.success(data.get("message", data.get("error", "Done")))
+    except:
+        st.sidebar.error("⚠️ Server not responding")
 
 # VERIFY OTP
 if st.sidebar.button("Verify OTP", key="verify_otp_btn"):
-    res = requests.post(
-        f"{API_URL}/verify-otp",
-        params={"email": email, "otp": otp}
-    )
-    st.sidebar.success(res.json().get("message", res.json().get("error")))
+    try:
+        res = requests.post(
+            f"{API_URL}/verify-otp",
+            params={"email": email, "otp": otp},
+            timeout=30
+        )
+        data = res.json() if res.text else {}
+        st.sidebar.success(data.get("message", data.get("error", "Done")))
+    except:
+        st.sidebar.error("⚠️ Server not responding")
 
 # REGISTER
 if st.sidebar.button("Register", key="register_btn"):
-    res = requests.post(
-        f"{API_URL}/register",
-        params={"email": email, "password": password}
-    )
-    st.sidebar.success(res.json().get("message", res.json().get("error")))
+    try:
+        res = requests.post(
+            f"{API_URL}/register",
+            params={"email": email, "password": password},
+            timeout=30
+        )
+        data = res.json() if res.text else {}
+        st.sidebar.success(data.get("message", data.get("error", "Done")))
+    except:
+        st.sidebar.error("⚠️ Server not responding")
 
 # LOGIN
-import time
-
 if st.sidebar.button("Login", key="login_btn"):
     try:
         with st.spinner("Connecting to server..."):
-            for _ in range(2):  # retry 2 times
+            for _ in range(2):
                 try:
                     res = requests.post(
                         f"{API_URL}/login",
                         params={"email": email, "password": password},
-                        timeout=30   # 🔥 increased timeout
+                        timeout=30
                     )
                     break
                 except:
@@ -64,9 +81,10 @@ if st.sidebar.button("Login", key="login_btn"):
         else:
             st.sidebar.error(data.get("error", "Login failed"))
 
-    except Exception:
-        st.sidebar.error("⚠️ Backend is waking up... try again in few seconds")
-
+    except:
+        st.sidebar.error("⚠️ Backend waking up, try again")
+if not st.session_state.logged_in:
+    st.stop()
 
 # ===== PREMIUM UI STYLES =====
 st.markdown("""
